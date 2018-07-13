@@ -6,20 +6,20 @@ import freechips.rocketchip.rocket._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tile._
 
-class FibAccel(opcodes: OpcodeSet, val n: Int = 70)(implicit p: Parameters) extends LazyRoCC(opcodes) {
-  override lazy val module = new FibAccelModuleImp(this)
+class Sha3Accel(opcodes: OpcodeSet, val n: Int = 70)(implicit p: Parameters) extends LazyRoCC(opcodes) {
+  override lazy val module = new Sha3AccelModuleImp(this)
 }
 
-class FibAccelModuleImp(outer: FibAccel) extends LazyRoCCModuleImp(outer)
+class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer)
     with HasCoreParameters {
   val regfile = Mem(outer.n, UInt(width = xLen))
   val funct = io.cmd.bits.inst.funct
   val length = io.cmd.bits.rs1
   val addr = io.cmd.bits.rs2(log2Up(outer.n)-1,0)
-  val doWrite = funct === UInt(0)
-  val doRead = funct === UInt(1)
-  val doLoad = funct === UInt(2)
-  val doAccum = funct === UInt(3)
+  val setUp = funct === UInt(0)
+  val doSha3 = funct === UInt(1)
+  //val doLoad = funct === UInt(2)
+  //val doAccum = funct === UInt(3)
 
   regfile(0) := UInt(0)
   regfile(1) := UInt(1)

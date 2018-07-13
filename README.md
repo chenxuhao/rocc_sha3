@@ -16,23 +16,23 @@ If cloned into rocket-chip directory use
 
 You can build the emulator using
 
-    cd emulator && make ROCKETCHIP_ADDONS=sha3 CONFIG=FibAccelConfig
+    cd emulator && make ROCKETCHIP_ADDONS=sha3 CONFIG=Sha3AccelConfig
 
 
 You can emulate the software implementation of sha3 by running
 
-    ./emulator-freechips.rocketchip.system-FibAccelConfig pk ../sha3/tests/sha3-sw.rv
+    ./emulator-freechips.rocketchip.system-Sha3AccelConfig pk ../sha3/tests/sha3-sw.rv
 
 or
 
-    ./emulator-freechips.rocketchip.system-FibAccelConfig pk ../sha3/tests/sha3-sw-bm.rv
+    ./emulator-freechips.rocketchip.system-Sha3AccelConfig pk ../sha3/tests/sha3-sw-bm.rv
 
 You can emulate the accelerated sha3 by running
 
-    ./emulator-freechips.rocketchip.system-FibAccelConfig pk ../sha3/tests/sha3-rocc-bm.rv
+    ./emulator-freechips.rocketchip.system-Sha3AccelConfig pk ../sha3/tests/sha3-rocc-bm.rv
 
 or 
 
-    ./emulator-freechips.rocketchip.system-FibAccelConfig pk ../sha3/tests/sha3-rocc.rv
+    ./emulator-freechips.rocketchip.system-Sha3AccelConfig pk ../sha3/tests/sha3-rocc.rv
 
 The -bm versions of the code omit the print statements and will complete faster.
