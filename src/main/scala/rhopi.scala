@@ -15,11 +15,13 @@ for (i = 0; i < 24; i++) {
 */
 
 class RhoPiModule(val w: Int = 64) extends Module {
-	val io = new Bundle {
-		val state_i = Vec(25, Bits(w.W))
-		val state_o = Vec(25, Bits(w.W))
-	}
-	val temp = Bits(w.W)
+	val io = IO(new Bundle {
+		val state_i = Input(Vec(25, Bits(w.W)))
+		val state_o = Output(Vec(25, Bits(w.W)))
+	})
+
+	//val temp = Bits(w.W)
+	val temp = RegInit(0.U(w.W))
 	for (i <- 0 until 5) {
 		for (j <- 0 until 5) {
 			if((RHOPI.tri(i*5+j)%w) == 0) {

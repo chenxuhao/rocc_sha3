@@ -1,49 +1,50 @@
 //see LICENSE for license
 //authors: Xuhao Chen
 package sha3
-import Chisel._
+import chisel3._
+import chisel3.util._
 import freechips.rocketchip.rocket._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tile._
 
-class Sha3Accel(opcodes: OpcodeSet, val n: Int = 70)(implicit p: Parameters) extends LazyRoCC(opcodes) {
-  override lazy val module = new Sha3AccelModuleImp(this)
+case object WidthP extends Field[Int]
+case object Stages extends Field[Int]
+case object FastMem extends Field[Boolean]
+case object BufferSram extends Field[Boolean]
+
+class Sha3Accel(opcodes: OpcodeSet)(implicit p: Parameters) extends LazyRoCC(opcodes) {
+	override lazy val module = new Sha3AccelModuleImp(this)
 }
 
-class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer)
-    with HasCoreParameters {
-  val regfile = Mem(outer.n, UInt(width = xLen))
-  val funct = io.cmd.bits.inst.funct
-  val length = io.cmd.bits.rs1
-  val addr = io.cmd.bits.rs2(log2Up(outer.n)-1,0)
-  val setUp = funct === UInt(0)
-  val doSha3 = funct === UInt(1)
-  //val doLoad = funct === UInt(2)
-  //val doAccum = funct === UInt(3)
+class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with HasCoreParameters {
+	val w = outer.p(WidthP)
+	val s = outer.p(Stages)
 
-  regfile(0) := UInt(0)
-  regfile(1) := UInt(1)
-  val counter = Reg(init = 2.U(8.W))
-  when (counter < UInt(70) && counter < length) {
-    regfile(counter) := regfile(counter - UInt(1)) + regfile(counter - UInt(2))
-	counter := counter + 1.U
-  }
-  val s_idle :: s_req :: s_resp :: s_other :: Nil = Enum(Bits(), 4)
-  val state = Reg(init = s_idle)
+	// control
+	val ctrl = Module(new CtrlModule(w,s)(outer.p))
 
-  // datapath
-  io.cmd.ready := (state === s_idle)
-  val sha3 = regfile(addr)
-  
-  // control
-  when (io.cmd.fire()) { state := s_req }
-  when (io.resp.fire()) { state := s_idle }
+	ctrl.io.rocc_funct   <> io.cmd.bits.inst.funct
+	ctrl.io.rocc_rs1     <> io.cmd.bits.rs1
+	ctrl.io.rocc_rs2     <> io.cmd.bits.rs2
+	ctrl.io.rocc_rd      <> io.cmd.bits.inst.rd
+	ctrl.io.rocc_req_val <> io.cmd.valid
+	ctrl.io.rocc_req_rdy <> io.cmd.ready
+	ctrl.io.busy         <> io.busy
 
-  io.resp.valid := io.cmd.valid
-  io.resp.bits.rd := io.cmd.bits.inst.rd
-  io.resp.bits.data := sha3
+	// datapath
+	val dpath = Module(new DpathModule(w,s))
 
-  io.busy := io.cmd.valid
-  io.interrupt := Bool(false)
-  io.mem.req.valid := Bool(false)
+	dpath.io.message_in <> ctrl.io.buffer_out
+	dpath.io.init   <> ctrl.io.init
+	dpath.io.round  <> ctrl.io.round
+	dpath.io.write  <> ctrl.io.write
+	dpath.io.absorb <> ctrl.io.absorb
+	dpath.io.aindex <> ctrl.io.aindex
+
+	// output hash back to the memory
+	io.mem.req.bits.data := dpath.io.hash_out(ctrl.io.windex)
+
+	io.interrupt := false.B
+	io.mem.req.valid := false.B
 }
+

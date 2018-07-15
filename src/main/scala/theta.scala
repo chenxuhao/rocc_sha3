@@ -17,29 +17,24 @@ for (i = 0; i < 5; i++) {
 }
 */
 class ThetaModule(val w: Int = 64) extends Module {
-	val io = new Bundle {
-		//val state_i = Vec.fill(5*5){Bits(INPUT,  width=w.W)}
-		val state_i = Vec(5*5, Bits(w.W))
-		//val state_o = Vec.fill(5*5){Bits(OUTPUT, width=w.W)}
-		val state_o = Vec(5*5, Bits(w.W))
-	}
-	val bc = Vec.fill(5){Bits(width=w.W)}
-	val t = Bits(width=w.W)
+	val io = IO(new Bundle {
+		val state_i = Input(Vec(25, UInt(w.W)))
+		val state_o = Output(Vec(25, UInt(w.W)))
+	})
+
+	//val bc = Vec(5, UInt(w.W))
+	val initValues = Seq.fill(5) { 0.U(w.W) }
+	val bc = RegInit(VecInit(initValues))
 	for (i <- 0 until 5) {
 		bc(i) := io.state_i(i*5+0) ^ io.state_i(i*5+1) ^ io.state_i(i*5+2) ^ io.state_i(i*5+3) ^ io.state_i(i*5+4)
 	}
+	//val t = UInt(w.W)
+	val t = RegInit(0.U(w.W))
 	for (i <- 0 until 5) {
 		t := bc((i+4)%5) ^ common.ROTL(bc((i+1)%5), 1.U, w.U)
-		for (j <- 0 until 25 by 5) {
-			io.state_o(i*5+j) := t ^ io.state_i(i*5+j);
+		for (j <- 0 until 5) {
+			io.state_o(i*5+j) := io.state_i(i*5+j) ^ t
 		}
 	}
 }
 
-class Parity extends Module {
-	val io = new Bundle {
-		val in = Vec(5, Bool())
-		val res = Bool()
-	}
-	io.res := io.in(0) ^ io.in(1) ^ io.in(2) ^ io.in(3) ^ io.in(4)
-}
