@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.util._
 
 class DpathModule(val w: Int, val s: Int) extends Module {
-	val r = 2*256
+	//val r = 2*256
+	val r = 0
 	val c = 25*w - r
 	val round_size_words = c/w
 	val hash_size_words = 256/w

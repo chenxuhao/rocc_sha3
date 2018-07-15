@@ -31,6 +31,17 @@ class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with
 	ctrl.io.rocc_req_rdy <> io.cmd.ready
 	ctrl.io.busy         <> io.busy
 
+	ctrl.io.dmem_req_val <> io.mem.req.valid
+	ctrl.io.dmem_req_rdy <> io.mem.req.ready
+	ctrl.io.dmem_req_tag <> io.mem.req.bits.tag
+	ctrl.io.dmem_req_cmd <> io.mem.req.bits.cmd
+	ctrl.io.dmem_req_typ <> io.mem.req.bits.typ
+	ctrl.io.dmem_req_addr<> io.mem.req.bits.addr
+
+	ctrl.io.dmem_resp_val <> io.mem.resp.valid
+	ctrl.io.dmem_resp_tag <> io.mem.resp.bits.tag
+	ctrl.io.dmem_resp_data := io.mem.resp.bits.data
+
 	// datapath
 	val dpath = Module(new DpathModule(w,s))
 
@@ -45,6 +56,13 @@ class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with
 	io.mem.req.bits.data := dpath.io.hash_out(ctrl.io.windex)
 
 	io.interrupt := false.B
-	io.mem.req.valid := false.B
+	//io.imem.acquire.valid := false.B
+	//io.imem.grant.ready := true.B
+	//io.dmem.head.acquire.valid := false.B
+	//io.dmem.head.grant.ready := false.B
+	//io.iptw.req.valid := false.B
+	//io.dptw.req.valid := false.B
+	//io.pptw.req.valid := false.B
+	//io.mem.invalidate_lr := false.B
 }
 
