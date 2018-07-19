@@ -7,8 +7,8 @@ import chisel3._
 class IotaModule(val w: Int = 64) extends Module {
 	val io = IO(new Bundle {
 		val round   = Input(UInt(5.W))
-		val state_i = Input(Vec(25, Bits(w.W)))
-		val state_o = Output(Vec(25, Bits(w.W)))
+		val state_i = Input(Vec(25, UInt(w.W)))
+		val state_o = Output(Vec(25, UInt(w.W)))
 	})
 
 	for(i <- 0 until 5) {

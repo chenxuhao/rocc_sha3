@@ -20,10 +20,9 @@ class RhoPiModule(val w: Int = 64) extends Module {
 		val state_o = Output(Vec(25, Bits(w.W)))
 	})
 
-	val temp = Wire(UInt(w.W))
-	//val temp = RegInit(0.U(w.W))
 	for (i <- 0 until 5) {
 		for (j <- 0 until 5) {
+			val temp = Wire(UInt(w.W))
 			if ((RHOPI.tri(i*5+j)%w) == 0) {
 				temp := io.state_i(i*5+j)
 			} else {

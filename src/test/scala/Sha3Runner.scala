@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import chisel3.iotesters._
 
 object Sha3Runner {
-  def apply(section: String, tutorialMap: Map[String, TesterOptionsManager => Boolean], args: Array[String]): Unit = {
+  def apply(section: String, sha3Map: Map[String, TesterOptionsManager => Boolean], args: Array[String]): Unit = {
     var successful = 0
     val errors = new ArrayBuffer[String]
 
@@ -15,10 +15,9 @@ object Sha3Runner {
     optionsManager.parse(args)
 
     val programArgs = optionsManager.commonOptions.programArgs
-
     if(programArgs.isEmpty) {
-      println("Available tutorials")
-      for(x <- tutorialMap.keys) {
+      println("Available modules")
+      for(x <- sha3Map.keys) {
         println(x)
       }
       println("all")
@@ -26,16 +25,18 @@ object Sha3Runner {
     }
 
     val problemsToRun = if(programArgs.exists(x => x.toLowerCase() == "all")) {
-      tutorialMap.keys
+      sha3Map.keys
     }
     else {
       programArgs
     }
+    //println(s"cxh debug programArgs=$programArgs")
+    //println(s"cxh debug problemsToRun=$problemsToRun")
 
     for(testName <- problemsToRun) {
-      tutorialMap.get(testName) match {
+      sha3Map.get(testName) match {
         case Some(test) =>
-          println(s"Starting tutorial $testName")
+          println(s"Starting module $testName")
           try {
             optionsManager.setTopName(testName)
             optionsManager.setTargetDirName(s"test_run_dir/$section/$testName")
@@ -54,7 +55,7 @@ object Sha3Runner {
               errors += s"Sha3 $testName: throwable ${t.getMessage}"
           }
         case _ =>
-          errors += s"Bad tutorial name: $testName"
+          errors += s"Bad module name: $testName"
       }
 
     }
@@ -63,7 +64,7 @@ object Sha3Runner {
     }
     if(errors.nonEmpty) {
       println("=" * 80)
-      println(s"Errors: ${errors.length}: in the following tutorials")
+      println(s"Errors: ${errors.length}: in the following modules")
       println(errors.mkString("\n"))
       println("=" * 80)
       System.exit(1)

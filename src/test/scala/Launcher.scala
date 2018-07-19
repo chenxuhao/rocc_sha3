@@ -8,22 +8,22 @@ import chisel3.iotesters.{Driver, TesterOptionsManager}
 object Launcher {
   val tests = Map(
     "Theta" -> { (manager: TesterOptionsManager) =>
-      Driver.execute(() => new Theta(), manager) {
+      Driver.execute(() => new ThetaModule(), manager) {
         (c) => new ThetaTests(c)
       }
     },
-    "RhoPi" -> { (manager: TesterOptionsManager) =>
-      Driver.execute(() => new RhoPi(8, 16), manager) {
-        (c) => new RhoPiTests(c)
-      }
-    },
+    //"RhoPi" -> { (manager: TesterOptionsManager) =>
+    //  Driver.execute(() => new RhoPiModule(), manager) {
+    //    (c) => new RhoPiTests(c)
+    //  }
+    //},
     "Chi" -> { (manager: TesterOptionsManager) =>
-      Driver.execute(() => new Chi(), manager) {
+      Driver.execute(() => new ChiModule(), manager) {
         (c) => new ChiTests(c)
       }
     },
     "Iota" -> { (manager: TesterOptionsManager) =>
-      Driver.execute(() => new Iota(UInt(16.W)), manager) {
+      Driver.execute(() => new IotaModule(), manager) {
         (c) => new IotaTests(c)
       }
     }/*,

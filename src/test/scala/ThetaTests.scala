@@ -1,52 +1,48 @@
 package sha3
 import chisel3.iotesters.{PeekPokeTester, Driver, ChiselFlatSpec}
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
-class ThetaModuleTests(c: ThetaModule) extends Tester(c, Array(c.io)) {
-  defTests {
-    var allGood = true
-    val vars    = new HashMap[Node, Node]()
-    val W       = 4
-    for (i <- 0 until 1) {
-      val state = Vec.fill(5*5){Bits(width = W)}
-      val out_state = Vec.fill(5*5){Bits(width = W)}
-      val matrix = common.generate_test_matrix(W)
-      var out_matrix = ArrayBuffer.empty[BigInt]
-      
-      for (i <- 0 until 5) {
-        for (j <- 0 until 5) {
-          val word = matrix(i*5+j)
-          state(i*5+j) = Bits(word,width=W)
-          vars(c.io.state_i(i*5+j)) = state(i*5+j)
-        }
-      }
 
-      val bc = Vec.fill(5){Bits(width = W)}
-      for(i <- 0 until 5) {
-        bc(i) := state(0*5+i) ^ state(1*5+i) ^ state(2*5+i) ^ state(3*5+i) ^ state(4*5+i)
-      }
+class ThetaTests(c: ThetaModule) extends PeekPokeTester(c) {
+	def ROTL(x: BigInt, y: Int, w: Int) = (((x) << (y)) | ((x) >> (w - (y))))
+	val rand    = new Random(1)
+	val w       = 4
+	val in_state = Array.fill(5*5){BigInt(rand.nextInt(1 <<w))} // random number between 0 ~ 15
+	val out_state = Array.fill(5*5){BigInt(0)}
+	//for(i <- 0 until 25) {
+	//	printf("cxh debug: in_state(%d) = %d\n", i, in_state(i))
+	//}
+	val bc = Array.fill(5){BigInt(0)}
+	for(i <- 0 until 5) {
+		bc(i) = in_state(0*5+i) ^ in_state(1*5+i) ^ in_state(2*5+i) ^ in_state(3*5+i) ^ in_state(4*5+i)
+	}
+	//for(i <- 0 until 5) {
+	//	printf("cxh debug: bc(%d)=%d\n", i, bc(i))
+	//}
+	for(i <- 0 until 5) {
+		val t = bc((i+4)%5) ^ ROTL(bc((i+1)%5), 1, 64)
+		//printf("cxh debug: t(%d)=%d\n", i, t)
+		for(j <- 0 until 5) {
+			out_state(i*5+j) = in_state(i*5+j) ^ t
+		}
+	}
 
-      for(i <- 0 until 5) {
-        val t = Bits(width = W)
-        t := bc((i+4)%5) ^ common.ROTL(bc((i+1)%5), UInt(1), UInt(W))
-        for(j <- 0 until 5) {
-          out_state(i*5+j) := state(i*5+j) ^ t
-          vars(c.io.state_o(i*5+j)) = out_state(i*5+j)
-        }
-      }
-      allGood = step(vars) && allGood
-      common.print_matrix(matrix)
-      //common.print_bigmatrix(out_matrix.toArray)
-    }
-    printf("Test passed: " + allGood + "\n")
-    allGood
-  }
+	for (i <- 0 until 25) {
+		poke(c.io.state_i(i), in_state(i))
+	}
+	step(1)
+	for(i <- 0 until 25) {
+		expect(c.io.state_o(i), out_state(i))
+	}
 }
 
 class ThetaTester extends ChiselFlatSpec {
 	behavior of "Theta"
 	backends foreach { backend =>
 		it should s"test the basic theta circuit" in {
-			Driver(() => new Theta, backend)((c) => new ThetaTests(c)) should be (true)
+			Driver(() => new ThetaModule, backend)((c) => new ThetaTests(c)) should be (true)
 		}
 	}
 }
