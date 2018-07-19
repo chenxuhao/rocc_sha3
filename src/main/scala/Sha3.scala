@@ -19,6 +19,7 @@ class Sha3Accel(opcodes: OpcodeSet)(implicit p: Parameters) extends LazyRoCC(opc
 class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with HasCoreParameters {
 	val w = outer.p(WidthP)
 	val s = outer.p(Stages)
+	io.resp.valid := false.B
 
 	// control
 	val ctrl = Module(new CtrlModule(w,s)(outer.p))
@@ -30,7 +31,14 @@ class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with
 	ctrl.io.rocc_req_val <> io.cmd.valid
 	ctrl.io.rocc_req_rdy <> io.cmd.ready
 	ctrl.io.busy         <> io.busy
-
+	ctrl.io.resp_data    <> io.resp.bits.data
+	ctrl.io.resp_rd      <> io.resp.bits.rd
+	ctrl.io.resp_valid   <> io.resp.valid
+	when (io.cmd.fire()) {
+		ctrl.io.rocc_fire := true.B
+	} .otherwise {
+		ctrl.io.rocc_fire := false.B
+	}
 	ctrl.io.dmem_req_val <> io.mem.req.valid
 	ctrl.io.dmem_req_rdy <> io.mem.req.ready
 	ctrl.io.dmem_req_tag <> io.mem.req.bits.tag
@@ -49,6 +57,7 @@ class Sha3AccelModuleImp(outer: Sha3Accel) extends LazyRoCCModuleImp(outer) with
 	dpath.io.init   <> ctrl.io.init
 	dpath.io.round  <> ctrl.io.round
 	dpath.io.write  <> ctrl.io.write
+	dpath.io.stage  <> ctrl.io.stage
 	dpath.io.absorb <> ctrl.io.absorb
 	dpath.io.aindex <> ctrl.io.aindex
 

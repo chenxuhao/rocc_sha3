@@ -5,7 +5,6 @@ package sha3
 import chisel3._
 
 object RHOPI {
-
   val piln = Array(
      0, 18, 21, 19, 14,
     10, 3,  24, 13,  22, 

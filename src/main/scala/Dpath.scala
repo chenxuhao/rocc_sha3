@@ -16,6 +16,7 @@ class DpathModule(val w: Int, val s: Int) extends Module {
 		val write  = Input(Bool())
 		val absorb = Input(Bool())
 		val round  = Input(UInt(5.W))
+		val stage  = Input(UInt(log2Ceil(s).W))
 		val aindex = Input(UInt(log2Ceil(round_size_words).W))
 		val message_in = Input(Bits(w.W))
 		val hash_out = Output(Vec(hash_size_words, UInt(w.W)))
@@ -23,12 +24,16 @@ class DpathModule(val w: Int, val s: Int) extends Module {
 
 	//val state = Vec(25, RegInit(0.U(w.W)))
 	//val state = Vec(25, UInt(w.W))
-	val state = Reg(Vec(25, UInt(w.W)))
+	val initValues = Seq.fill(25) { 0.U(w.W) }
+	val state = RegInit(VecInit(initValues))
 
 	val theta = Module(new ThetaModule(w)).io
 	val rhopi = Module(new RhoPiModule(w)).io
 	val chi = Module(new ChiModule(w)).io
 	val iota = Module(new IotaModule(w)).io
+
+	//iota.round := 0.U
+	//theta.state_i := VecInit(initValues)
 
 	theta.state_i := state
 	rhopi.state_i <> theta.state_o
@@ -53,7 +58,6 @@ class DpathModule(val w: Int, val s: Int) extends Module {
 		state := state
 	}
 
-	val initValues = Seq.fill(25) { 0.U(w.W) }
 	when (io.init) {
 		state := RegInit(VecInit(initValues))
 	}
