@@ -3,7 +3,6 @@ package sha3
 
 import chisel3._
 import chisel3.iotesters.{Driver, TesterOptionsManager}
-//import Sha3Runner
 
 object Launcher {
   val tests = Map(
@@ -26,12 +25,12 @@ object Launcher {
       Driver.execute(() => new IotaModule(), manager) {
         (c) => new IotaTests(c)
       }
-    }/*,
+    },
     "Ctrl" -> { (manager: TesterOptionsManager) =>
       Driver.execute(() => new Ctrl(), manager) {
         (c) => new CtrlTests(c)
       }
-    },
+    }/*,
     "Dpath" -> { (manager: TesterOptionsManager) =>
       Driver.execute(() => new Dpath(), manager) {
         (c) => new DpathTests(c)

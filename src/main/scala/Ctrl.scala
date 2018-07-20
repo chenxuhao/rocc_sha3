@@ -5,7 +5,6 @@ package sha3
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.rocket._
-//import freechips.rocketchip.tile._
 import freechips.rocketchip.config._
 
 class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module() {
@@ -52,12 +51,11 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 		val buffer_out = Output(Bits(w.W))
 	})
 
-	//val r_idle :: r_eat_addr :: r_eat_len :: Nil = Enum(3)
-	//val rocc_s  = RegInit(r_idle)
 	val msg_addr  = RegInit(0.U(64.W))
 	val hash_addr = RegInit(0.U(64.W))
-	val msg_len   = RegInit(0.U(64.W))
+	val msg_len   = RegInit(0.U(32.W))
 	val busy      = RegInit(false.B)
+	val my_msg_len= RegInit(0.U(32.W))
 
 	//memory pipe state
 	val dmem_resp_tag_reg = RegNext(io.dmem_resp_tag)
@@ -90,6 +88,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 	val windex = RegInit(0.U(log2Ceil(hash_size_words+1).W))
 	val rindex = RegInit((rounds+1).U(5.W)) // round index, a counter for absorb (Max=round_size_words-1)
 	//val pindex = RegInit(0.U(log2Ceil(round_size_words).W))
+	val rindex_reg = RegNext(rindex)
 
 	val s_idle :: s_absorb :: s_hash :: s_write :: Nil = Enum(4)
 	val state = RegInit(s_idle)
@@ -108,8 +107,8 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 
 	//io.rocc_req_rdy := false.B
 	io.init   := false.B
-	//io.busy   := busy
-	io.busy   := io.rocc_req_val
+	io.busy   := busy
+	//io.busy   := io.rocc_req_val || busy
 	io.round  := rindex
 	io.stage  := sindex
 	io.write  := true.B
@@ -120,32 +119,39 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 	io.dmem_req_typ := MT_D
 	io.dmem_req_addr:= 0.U(32.W)
 
-	val rindex_reg = RegNext(rindex)
-	val temp       = Mem(4, UInt(32.W))
-
 	io.rocc_req_rdy := !busy
 	io.resp_rd := io.rocc_rd
 	io.resp_valid := io.rocc_req_val
-	val addr = io.rocc_rs2(log2Ceil(4)-1,0)
-	io.resp_data := temp(addr)
+	// for debug
+	when (io.rocc_rs2 === 1.U) {
+		io.resp_data := msg_addr
+	} .elsewhen (io.rocc_rs2 === 2.U) {
+		io.resp_data := hash_addr
+	} .elsewhen (io.rocc_rs2 === 0.U) {
+		io.resp_data := windex
+	} .otherwise {
+		io.resp_data := my_msg_len
+	}
 
 	// decode the rocc instruction
 	when (io.rocc_req_val && !busy) {
-		//io.busy := true.B
+		io.busy := true.B
 		when (io.rocc_funct === 0.U) {
-			//printf("debug: setUp\n");
 			io.rocc_req_rdy := true.B
 			msg_addr := io.rocc_rs1
 			hash_addr := io.rocc_rs2
 		} .elsewhen (io.rocc_funct === 1.U) {
-			//printf("debug: doSha3\n");
 			io.rocc_req_rdy := true.B
 			busy := true.B
 			msg_len := io.rocc_rs1
+			my_msg_len := io.rocc_rs1
 		} .elsewhen (io.rocc_funct === 3.U) {
-			//printf("debug: write\n");
 			when(io.rocc_fire) {
-				temp(addr) := io.rocc_rs1
+				when (io.rocc_rs2 === 1.U) {
+					msg_addr := io.rocc_rs1
+				} .otherwise {
+					hash_addr := io.rocc_rs1
+				}
 			}
 		}
 	}
@@ -153,10 +159,9 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 	switch(mem_s) {
 		is(m_idle) {
 			val canRead = busy && (read < msg_len || (read === msg_len && msg_len === 0.U)) &&
-							(!buffer_valid && buffer_count === 0.U)
+							!buffer_valid && buffer_count === 0.U
 			when (canRead) {
 				// start reading data
-				buffer_count := 0.U
 				mindex := 0.U
 				mem_s := m_read
 			} .otherwise {
@@ -168,16 +173,16 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 			when (state =/= s_write) {
 				//dmem signals
 				io.dmem_req_val := read < msg_len && mindex < round_size_words.U
-				io.dmem_req_addr:= msg_addr + (mindex << 3.U)
+				io.dmem_req_addr:= msg_addr + (mindex << 3.U) // read 1 word each time, 1 word = 8 bytes, so left shift 3 (i.e. times 8)
 				io.dmem_req_tag := mindex
 				io.dmem_req_cmd := M_XRD
 				io.dmem_req_typ := MT_D
 
 				// read data if ready and valid
 				when(io.dmem_req_rdy && io.dmem_req_val) {
-					mindex := mindex + 1.U
-					read := read + 8.U
-					mem_s := m_wait
+					mindex := mindex + 1.U // read 1 word each time
+					read := read + 8.U // read 8 bytes each time
+					mem_s := m_wait // wait until reading done
 				} .otherwise {
 					mem_s := m_read
 				}
@@ -203,7 +208,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 					mem_s := m_absorb
 				}
 			} .otherwise {
-				// message not done yet, but absorb current data in the buffer
+				// message not done yet, but buffer is full, so absorb current data in the buffer
 				msg_addr := msg_addr + (round_size_words << 3).U // 1 word = 8 bytes, so left shift 3 (i.e. times 8)
 				buffer_valid := false.B
 				mem_s := m_absorb
@@ -231,6 +236,8 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 			//move to idle when we know this thread was absorbed
 			when(aindex >= (round_size_words-1).U) {
 				mem_s := m_idle
+			} .otherwise {
+				mem_s := m_absorb
 			}
 		}
 	}
@@ -239,7 +246,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 		is(s_idle) {
 			val canAbsorb = busy && rindex_reg >= rounds.U && buffer_valid && hashed <= msg_len
 			when (canAbsorb) {
-				busy := true.B
+				busy  := true.B
 				state := s_absorb
 			} .otherwise {
 				state := s_idle
@@ -247,7 +254,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 		}
 		is(s_absorb) {
 			io.write := !areg
-			areg := true.B
+			areg := true.B // notify dpath to start absorb data (io.absorb := areg)
 			aindex := aindex + 1.U
 			when(io.aindex >= (round_size_words-1).U) {
 				aindex := 0.U
@@ -279,11 +286,12 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 				}
 			} .otherwise {
 				io.write := true.B
-				// TODO: why go back to idle?
-				when (hashed < msg_len || (hashed === msg_len && rindex === rounds.U)) {
+				when (hashed > msg_len || (hashed === msg_len && rindex === rounds.U)) {
+					// all hash done, start writing back the results
 					windex := 0.U
 					state := s_write
 				} .otherwise {
+					// back to process the next content in the message
 					state := s_idle
 				}
 			}
@@ -291,7 +299,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 		is(s_write) {
 			// set up writing request signals
 			io.dmem_req_val := windex < hash_size_words.U
-			io.dmem_req_addr := hash_addr + (windex << 3.U)
+			io.dmem_req_addr:= hash_addr + (windex << 3.U)
 			io.dmem_req_tag := round_size_words.U + windex
 			io.dmem_req_cmd := M_XWR
 
@@ -320,7 +328,7 @@ class CtrlModule(val w: Int, val s: Int)(implicit p: Parameters) extends Module(
 				read := 0.U
 				buffer_valid := false.B
 				buffer_count := 0.U
-				io.init := false.B
+				io.init := true.B
 				state := s_idle
 			} .otherwise {
 				// not done yet, continue writing

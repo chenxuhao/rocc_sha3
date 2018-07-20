@@ -20,8 +20,9 @@ class ChiModule(val w: Int = 64) extends Module {
 
 	for (i <- 0 until 5) {
 		for (j <- 0 until 5) {
-			io.state_o(i*5+j) := io.state_i(i*5+j) ^ (~io.state_i(i*5+((j+1)%5)) & io.state_i(i*5+((j+2)%5)))
-				//(~io.state_i(((i+1)%5)*5+((j)%5)) & io.state_i(((i+2)%5)*5+((j)%5)))
+			io.state_o(i*5+j) := io.state_i(i*5+j) ^ 
+				//(~io.state_i(i*5+((j+1)%5)) & io.state_i(i*5+((j+2)%5)))
+				((~io.state_i(((i+1)%5)*5+((j)%5))) & io.state_i(((i+2)%5)*5+((j)%5)))
 		}
 	}
 }

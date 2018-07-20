@@ -22,10 +22,9 @@ class ThetaModule(val w: Int = 64) extends Module {
 		val state_o = Output(Vec(25, UInt(w.W)))
 	})
 	val bc = Wire(Vec(5, UInt(w.W)))
-	//val initValues = Seq.fill(5) { 0.U(w.W) }
-	//val bc = RegInit(VecInit(initValues))
 	for (i <- 0 until 5) {
-		bc(i) := io.state_i(i) ^ io.state_i(i+5) ^ io.state_i(i+10) ^ io.state_i(i+15) ^ io.state_i(i+20)
+		//bc(i) := io.state_i(i) ^ io.state_i(i+5) ^ io.state_i(i+10) ^ io.state_i(i+15) ^ io.state_i(i+20)
+		bc(i) := io.state_i(i*5+0) ^ io.state_i(i*5+1) ^ io.state_i(i*5+2) ^ io.state_i(i*5+3) ^ io.state_i(i*5+4)
 	}
 	for (i <- 0 until 5) {
 		val t = Wire(UInt(w.W))

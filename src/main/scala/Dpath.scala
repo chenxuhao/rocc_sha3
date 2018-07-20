@@ -59,10 +59,6 @@ class DpathModule(val w: Int, val s: Int) extends Module {
 	}
 
 	when (io.init) {
-		state := RegInit(VecInit(initValues))
+		state := VecInit(initValues)
 	}
-
-	//when (reset) {
-	//	state := VecInit(initValues)
-	//}
 }
